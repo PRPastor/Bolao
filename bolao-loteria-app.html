@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bolão Loteria App</title>
+  <meta name="description" content="Projeto inicial de aplicativo para controlar bolões de loteria." />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem;
+      --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem; --space-16: 4rem;
+      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #edeae5;
+      --color-border: #d4d1ca; --color-divider: #dcd9d5; --color-text: #28251d; --color-text-muted: #6f6c66;
+      --color-text-faint: #a8a59e; --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-highlight: #cedcd8;
+      --color-success: #437a22; --color-warning: #964219; --color-error: #a12c7b; --color-text-inverse: #f9f8f4;
+      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.875rem; --radius-xl: 1rem; --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgba(20,20,20,.05); --shadow-md: 0 8px 24px rgba(20,20,20,.08);
+      --content-wide: 1180px; --transition: 180ms cubic-bezier(0.16,1,0.3,1);
+      --font-body: 'Satoshi', 'Inter', sans-serif; --font-display: 'Satoshi', 'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d; --color-surface-offset: #24221f;
+      --color-border: #393836; --color-divider: #262523; --color-text: #ece8df; --color-text-muted: #b0aba2;
+      --color-text-faint: #7c786f; --color-primary: #4f98a3; --color-primary-hover: #227f8b; --color-primary-highlight: #313b3b;
+      --color-success: #7db05a; --color-warning: #d48a5f; --color-error: #d163a7; --color-text-inverse: #171614;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.2); --shadow-md: 0 10px 28px rgba(0,0,0,.35);
+    }
+    *,*::before,*::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-height: 100vh; font-family: var(--font-body); font-size: var(--text-base); line-height: 1.6; color: var(--color-text); background: var(--color-bg); }
+    img,svg { max-width: 100%; display: block; }
+    button,input,textarea,select { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: 0; }
+    :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; border-radius: var(--radius-sm); }
+    .app-shell { max-width: var(--content-wide); margin: 0 auto; padding: var(--space-4); }
+    .skip-link { position: absolute; left: -999px; top: 0; }
+    .skip-link:focus { left: var(--space-4); top: var(--space-4); background: var(--color-surface); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); z-index: 99; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-4) 0 var(--space-6); }
+    .brand { display: flex; align-items: center; gap: var(--space-3); font-weight: 700; }
+    .logo-mark { width: 40px; height: 40px; border-radius: 14px; background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 60%, white)); display:flex; align-items:center; justify-content:center; color: white; box-shadow: var(--shadow-sm); }
+    .top-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .theme-toggle, .tab-btn, .ghost-btn, .secondary-btn, .primary-btn, .danger-btn { transition: all var(--transition); }
+    .theme-toggle, .tab-btn, .ghost-btn, .secondary-btn, .primary-btn, .danger-btn { min-height: 44px; border-radius: var(--radius-full); padding: 0 var(--space-4); }
+    .theme-toggle, .ghost-btn, .secondary-btn { background: var(--color-surface); color: var(--color-text); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
+    .primary-btn { background: var(--color-primary); color: var(--color-text-inverse); }
+    .primary-btn:hover { background: var(--color-primary-hover); }
+    .danger-btn { background: var(--color-error); color: white; }
+    .hero { display:grid; grid-template-columns: 1.2fr .8fr; gap: var(--space-6); align-items: stretch; }
+    .hero-card, .panel, .card, .stat { background: var(--color-surface); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); }
+    .hero-card { padding: var(--space-8); }
+    .hero h1 { font-family: var(--font-display); font-size: var(--text-xl); line-height: 1.1; margin: 0 0 var(--space-4); }
+    .hero p { margin: 0 0 var(--space-5); color: var(--color-text-muted); max-width: 56ch; }
+    .hero-grid { display:grid; grid-template-columns: repeat(2,1fr); gap: var(--space-3); }
+    .stat { padding: var(--space-4); background: var(--color-surface-2); }
+    .stat strong { display:block; font-size: var(--text-lg); }
+    .panel { padding: var(--space-6); }
+    .layout { display:grid; grid-template-columns: 290px 1fr; gap: var(--space-6); margin-top: var(--space-6); }
+    .sidebar { position: sticky; top: var(--space-4); align-self: start; }
+    .tabs { display:grid; gap: var(--space-2); }
+    .tab-btn { text-align:left; background: var(--color-surface); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); color: var(--color-text); }
+    .tab-btn.active { background: var(--color-primary-highlight); border-color: color-mix(in srgb, var(--color-primary) 40%, transparent); color: var(--color-primary-hover); }
+    .section { display:none; }
+    .section.active { display:block; }
+    .section-head { display:flex; justify-content:space-between; align-items:flex-start; gap: var(--space-4); margin-bottom: var(--space-5); }
+    .section-head h2 { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+    .section-head p { margin:0; color: var(--color-text-muted); }
+    .grid-2, .grid-3 { display:grid; gap: var(--space-4); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .field { display:grid; gap: var(--space-2); }
+    .field label { font-size: var(--text-sm); font-weight: 600; }
+    .field input, .field textarea, .field select { width:100%; min-height: 46px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface-2); color: var(--color-text); padding: 0 var(--space-3); }
+    .field textarea { min-height: 104px; padding: var(--space-3); resize: vertical; }
+    .form-actions { display:flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-5); }
+    .cards { display:grid; gap: var(--space-4); }
+    .card { padding: var(--space-5); }
+    .card h3 { margin:0 0 var(--space-2); font-size: 1.05rem; }
+    .meta, .muted { color: var(--color-text-muted); }
+    .meta { display:flex; flex-wrap:wrap; gap: var(--space-3); font-size: var(--text-sm); margin-top: var(--space-3); }
+    .badge { display:inline-flex; align-items:center; gap: var(--space-2); padding: .35rem .7rem; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 700; background: var(--color-primary-highlight); color: var(--color-primary-hover); }
+    .badge.success { background: color-mix(in srgb, var(--color-success) 16%, transparent); color: var(--color-success); }
+    .badge.warning { background: color-mix(in srgb, var(--color-warning) 16%, transparent); color: var(--color-warning); }
+    .badge.error { background: color-mix(in srgb, var(--color-error) 16%, transparent); color: var(--color-error); }
+    .list { display:grid; gap: var(--space-3); }
+    .list-item { display:flex; justify-content:space-between; align-items:center; gap: var(--space-4); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface-2); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+    .list-item .title { font-weight: 700; }
+    .inline-actions { display:flex; gap: var(--space-2); flex-wrap: wrap; }
+    .inline-actions button { min-height: 38px; border-radius: var(--radius-full); padding: 0 .9rem; }
+    .table-wrap { overflow:auto; border-radius: var(--radius-lg); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
+    table { width:100%; border-collapse: collapse; min-width: 720px; background: var(--color-surface); }
+    th, td { text-align:left; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-divider); font-size: var(--text-sm); }
+    th { color: var(--color-text-muted); font-weight: 700; background: var(--color-surface-2); }
+    .public-box { padding: var(--space-5); border-radius: var(--radius-xl); background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
+    .highlight-box { padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-primary-highlight); }
+    .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--text-sm); word-break: break-all; }
+    .footer-note { margin-top: var(--space-6); color: var(--color-text-muted); font-size: var(--text-sm); }
+    .empty { padding: var(--space-8); text-align:center; border:1px dashed var(--color-border); border-radius: var(--radius-xl); color: var(--color-text-muted); }
+    .notice { padding: var(--space-4); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-warning) 10%, transparent); color: var(--color-text); margin-bottom: var(--space-4); }
+    .divider { height: 1px; background: var(--color-divider); margin: var(--space-5) 0; }
+    @media (max-width: 980px) {
+      .hero, .layout, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .section-head { flex-direction: column; }
+    }
+    @media (max-width: 640px) {
+      .app-shell { padding: var(--space-3); }
+      .hero-card, .panel, .card { padding: var(--space-5); }
+      .hero-grid { grid-template-columns: 1fr; }
+      .topbar { align-items:flex-start; flex-direction: column; }
+      .list-item { flex-direction: column; align-items:flex-start; }
+      .inline-actions { width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="Bolão Fácil">
+        <div class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M5 12h14" />
+            <path d="M12 5v14" />
+            <circle cx="12" cy="12" r="9" />
+          </svg>
+        </div>
+        <div>
+          <div>Bolão Fácil</div>
+          <div class="muted" style="font-size:var(--text-xs);font-weight:500;">Projeto inicial pronto para hospedar</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="ghost-btn" id="demoSeedBtn">Carregar exemplo</button>
+        <button class="theme-toggle" data-theme-toggle aria-label="Alternar tema">🌙</button>
+      </div>
+    </header>
+
+    <main id="conteudo">
+      <section class="hero">
+        <div class="hero-card">
+          <span class="badge">MVP do bolão</span>
+          <h1>Controle cotas, participantes, pagamentos e jogos em um único link.</h1>
+          <p>Este projeto inicial já traz painel de administração, página pública de participação, cadastro de jogos e estrutura pronta para ligar no Supabase. Ele funciona só com HTML, CSS e JavaScript, então pode ser hospedado gratuitamente.</p>
+          <div class="form-actions">
+            <button class="primary-btn" data-go-section="admin-boloes">Criar bolão</button>
+            <button class="secondary-btn" data-go-section="publico">Ver página pública</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="hero-grid">
+            <div class="stat"><span class="muted">Admin</span><strong>Cadastro do bolão</strong><span class="muted">valor, loteria, datas, Pix</span></div>
+            <div class="stat"><span class="muted">Convite</span><strong>Link público</strong><span class="muted">compartilhamento por WhatsApp</span></div>
+            <div class="stat"><span class="muted">Financeiro</span><strong>Status de pagamento</strong><span class="muted">pago, pendente, cancelado</span></div>
+            <div class="stat"><span class="muted">Jogos</span><strong>Registro de apostas</strong><span class="muted">dezenas, valor e observações</span></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="layout">
+        <aside class="sidebar panel" aria-label="Navegação do painel">
+          <div class="tabs">
+            <button class="tab-btn active" data-section="admin-boloes">Bolões</button>
+            <button class="tab-btn" data-section="admin-participantes">Participantes</button>
+            <button class="tab-btn" data-section="admin-jogos">Jogos</button>
+            <button class="tab-btn" data-section="publico">Página pública</button>
+            <button class="tab-btn" data-section="integracao">Integração Supabase</button>
+            <button class="tab-btn" data-section="hospedagem">Hospedagem grátis</button>
+          </div>
+          <div class="divider"></div>
+          <div class="muted" style="font-size:var(--text-sm);">Dica: este modelo usa dados locais para demonstração. Depois, basta preencher a URL e a chave pública do Supabase para gravar tudo online.</div>
+        </aside>
+
+        <div>
+          <section class="section active" id="admin-boloes">
+            <div class="section-head">
+              <div>
+                <h2>Cadastro de bolão</h2>
+                <p>Crie um bolão com valor da cota, loteria, datas, chave Pix e descrição.</p>
+              </div>
+              <span class="badge">Administrador</span>
+            </div>
+            <div class="panel">
+              <form id="bolaoForm">
+                <div class="grid-2">
+                  <div class="field"><label for="titulo">Nome do bolão</label><input id="titulo" required placeholder="Ex.: Mega da Virada Amigos" /></div>
+                  <div class="field"><label for="loteria">Nome da loteria</label><input id="loteria" required placeholder="Ex.: Mega-Sena" /></div>
+                  <div class="field"><label for="valorCota">Valor da cota</label><input id="valorCota" required placeholder="Ex.: 20,00" /></div>
+                  <div class="field"><label for="slug">Slug do link</label><input id="slug" required placeholder="Ex.: mega-maio-2026" /></div>
+                  <div class="field"><label for="dataSorteio">Data do sorteio</label><input id="dataSorteio" type="date" required /></div>
+                  <div class="field"><label for="dataPagamento">Data limite de pagamento</label><input id="dataPagamento" type="date" required /></div>
+                  <div class="field grid-span"><label for="pix">Chave Pix</label><input id="pix" required placeholder="cpf, telefone, email ou chave aleatória" /></div>
+                </div>
+                <div class="field" style="margin-top:var(--space-4);"><label for="descricao">Observações</label><textarea id="descricao" placeholder="Regras, quantidade de cotas, horário, prêmios, etc."></textarea></div>
+                <div class="form-actions">
+                  <button class="primary-btn" type="submit">Salvar bolão</button>
+                  <button class="secondary-btn" type="button" id="novoBolaoBtn">Limpar formulário</button>
+                </div>
+              </form>
+            </div>
+            <div class="cards" id="boloesList" style="margin-top:var(--space-5);"></div>
+          </section>
+
+          <section class="section" id="admin-participantes">
+            <div class="section-head">
+              <div>
+                <h2>Participantes</h2>
+                <p>Cadastre participantes e acompanhe quem pagou.</p>
+              </div>
+              <span class="badge success">Controle financeiro</span>
+            </div>
+            <div class="panel">
+              <form id="participanteForm">
+                <div class="grid-3">
+                  <div class="field"><label for="participanteNome">Nome</label><input id="participanteNome" required placeholder="Nome do participante" /></div>
+                  <div class="field"><label for="participanteContato">Contato</label><input id="participanteContato" placeholder="WhatsApp ou email" /></div>
+                  <div class="field"><label for="participanteStatus">Status</label><select id="participanteStatus"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="cancelado">Cancelado</option></select></div>
+                </div>
+                <div class="form-actions">
+                  <button class="primary-btn" type="submit">Adicionar participante</button>
+                </div>
+              </form>
+            </div>
+            <div class="table-wrap" style="margin-top:var(--space-5);">
+              <table>
+                <thead><tr><th>Nome</th><th>Contato</th><th>Status</th><th>Bolão</th><th>Ações</th></tr></thead>
+                <tbody id="participantesTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="section" id="admin-jogos">
+            <div class="section-head">
+              <div>
+                <h2>Jogos cadastrados</h2>
+                <p>Registre as apostas do bolão e vincule ao sorteio.</p>
+              </div>
+              <span class="badge warning">Operação</span>
+            </div>
+            <div class="panel">
+              <form id="jogoForm">
+                <div class="grid-2">
+                  <div class="field"><label for="jogoConcurso">Concurso</label><input id="jogoConcurso" placeholder="Ex.: 2850" required /></div>
+                  <div class="field"><label for="jogoValor">Valor do jogo</label><input id="jogoValor" placeholder="Ex.: 5,00" /></div>
+                  <div class="field"><label for="jogoDezenas">Dezenas / números</label><input id="jogoDezenas" required placeholder="Ex.: 04 15 22 33 41 56" /></div>
+                  <div class="field"><label for="jogoBolao">Bolão</label><select id="jogoBolao"></select></div>
+                </div>
+                <div class="field" style="margin-top:var(--space-4);"><label for="jogoObs">Observações</label><textarea id="jogoObs" placeholder="Teimosinha, surpresinha, quantidade de jogos, etc."></textarea></div>
+                <div class="form-actions">
+                  <button class="primary-btn" type="submit">Salvar jogo</button>
+                </div>
+              </form>
+            </div>
+            <div class="cards" id="jogosList" style="margin-top:var(--space-5);"></div>
+          </section>
+
+          <section class="section" id="publico">
+            <div class="section-head">
+              <div>
+                <h2>Página pública do bolão</h2>
+                <p>Use este layout para o participante entrar pelo link, ver Pix e confirmar participação.</p>
+              </div>
+              <span class="badge">Link compartilhável</span>
+            </div>
+            <div class="public-box">
+              <div class="highlight-box">
+                <div class="muted" style="font-size:var(--text-sm);">Link gerado</div>
+                <div class="code" id="publicLinkText">https://seu-dominio.pages.dev/?bolao=demo-mega-maio</div>
+              </div>
+              <div id="publicBolaoCard" style="margin-top:var(--space-5);"></div>
+              <div class="divider"></div>
+              <form id="publicJoinForm">
+                <div class="grid-2">
+                  <div class="field"><label for="publicNome">Seu nome</label><input id="publicNome" required placeholder="Digite seu nome" /></div>
+                  <div class="field"><label for="publicContato">Seu WhatsApp</label><input id="publicContato" placeholder="(11) 99999-9999" /></div>
+                </div>
+                <div class="form-actions">
+                  <button class="primary-btn" type="submit">Participar do bolão</button>
+                  <button class="secondary-btn" type="button" id="copyLinkBtn">Copiar link</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <section class="section" id="integracao">
+            <div class="section-head">
+              <div>
+                <h2>Integração com Supabase</h2>
+                <p>Preencha suas chaves para salvar e ler os dados online.</p>
+              </div>
+              <span class="badge success">Pronto para conectar</span>
+            </div>
+            <div class="notice">Este HTML já carrega a biblioteca oficial do Supabase no navegador. Você só precisa criar as tabelas e informar a URL do projeto e a chave pública.</div>
+            <div class="panel">
+              <div class="grid-2">
+                <div class="field"><label for="supabaseUrl">SUPABASE_URL</label><input id="supabaseUrl" placeholder="https://xxxx.supabase.co" /></div>
+                <div class="field"><label for="supabaseAnon">SUPABASE_ANON_KEY</label><input id="supabaseAnon" placeholder="cole aqui a chave pública" /></div>
+              </div>
+              <div class="form-actions">
+                <button class="primary-btn" id="connectSupabaseBtn" type="button">Testar conexão</button>
+              </div>
+              <div class="footer-note" id="supabaseStatus">Status: usando dados locais de demonstração.</div>
+            </div>
+            <div class="panel" style="margin-top:var(--space-5);">
+              <h3 style="margin-top:0;">SQL inicial</h3>
+              <div class="code" style="white-space:pre-wrap;">create table public.boloes (
+  id uuid primary key default gen_random_uuid(),
+  titulo text not null,
+  loteria text not null,
+  valor_cota text not null,
+  data_sorteio date not null,
+  data_pagamento date not null,
+  pix text not null,
+  slug text unique not null,
+  descricao text,
+  created_at timestamp with time zone default now()
+);
+
+create table public.participantes (
+  id uuid primary key default gen_random_uuid(),
+  bolao_id uuid references public.boloes(id) on delete cascade,
+  nome text not null,
+  contato text,
+  status text default 'pendente',
+  created_at timestamp with time zone default now()
+);
+
+create table public.jogos (
+  id uuid primary key default gen_random_uuid(),
+  bolao_id uuid references public.boloes(id) on delete cascade,
+  concurso text not null,
+  dezenas text not null,
+  valor text,
+  observacoes text,
+  created_at timestamp with time zone default now()
+);</div>
+            </div>
+          </section>
+
+          <section class="section" id="hospedagem">
+            <div class="section-head">
+              <div>
+                <h2>Como hospedar grátis</h2>
+                <p>Passo a passo curto para publicar o app sem pagar.</p>
+              </div>
+              <span class="badge">Cloudflare Pages</span>
+            </div>
+            <div class="panel">
+              <ol style="padding-left:1.2rem; margin:0; display:grid; gap:var(--space-3);">
+                <li>Crie uma conta no GitHub e outra na Cloudflare Pages.</li>
+                <li>Suba este arquivo HTML para um repositório no GitHub.</li>
+                <li>Na Cloudflare, escolha Workers &amp; Pages e depois Create application.</li>
+                <li>Importe o repositório, use a branch <span class="code">main</span>, comando <span class="code">exit 0</span> e diretório de saída <span class="code">.</span>.</li>
+                <li>Depois do deploy, você receberá um endereço no formato <span class="code">seu-projeto.pages.dev</span>.</li>
+              </ol>
+              <div class="divider"></div>
+              <p class="muted">Se quiser domínio próprio depois, você pode apontar um domínio para a Cloudflare. Se quiser backend gratuito, conecte o app ao Supabase.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      currentSection: 'admin-boloes',
+      supabase: null,
+      storageMode: 'local',
+      boloes: [],
+      participantes: [],
+      jogos: [],
+      editingBolaoId: null
+    };
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+
+    function uid() {
+      return Math.random().toString(36).slice(2, 10);
+    }
+
+    function formatStatusBadge(status) {
+      const map = {
+        pago: '<span class="badge success">Pago</span>',
+        pendente: '<span class="badge warning">Pendente</span>',
+        cancelado: '<span class="badge error">Cancelado</span>'
+      };
+      return map[status] || '<span class="badge">' + status + '</span>';
+    }
+
+    function getSelectedBolao() {
+      return state.boloes[0] || null;
+    }
+
+    function updateThemeButton() {
+      const btn = $('[data-theme-toggle]');
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      btn.textContent = dark ? '☀️' : '🌙';
+      btn.setAttribute('aria-label', dark ? 'Ativar tema claro' : 'Ativar tema escuro');
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+      updateThemeButton();
+    }
+
+    function switchSection(id) {
+      state.currentSection = id;
+      $$('.section').forEach(sec => sec.classList.toggle('active', sec.id === id));
+      $$('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.section === id));
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function saveLocal() {
+      window.__bolaoData = {
+        boloes: state.boloes,
+        participantes: state.participantes,
+        jogos: state.jogos
+      };
+    }
+
+    function loadLocal() {
+      const data = window.__bolaoData;
+      if (!data) return;
+      state.boloes = data.boloes || [];
+      state.participantes = data.participantes || [];
+      state.jogos = data.jogos || [];
+    }
+
+    function fillBolaoForm(bolao) {
+      $('#titulo').value = bolao.titulo || '';
+      $('#loteria').value = bolao.loteria || '';
+      $('#valorCota').value = bolao.valor_cota || '';
+      $('#slug').value = bolao.slug || '';
+      $('#dataSorteio').value = bolao.data_sorteio || '';
+      $('#dataPagamento').value = bolao.data_pagamento || '';
+      $('#pix').value = bolao.pix || '';
+      $('#descricao').value = bolao.descricao || '';
+      state.editingBolaoId = bolao.id;
+    }
+
+    function resetBolaoForm() {
+      $('#bolaoForm').reset();
+      state.editingBolaoId = null;
+    }
+
+    function renderBoloes() {
+      const container = $('#boloesList');
+      const select = $('#jogoBolao');
+      select.innerHTML = '';
+      if (!state.boloes.length) {
+        container.innerHTML = '<div class="empty">Nenhum bolão cadastrado ainda. Use o botão “Carregar exemplo” ou crie o primeiro bolão.</div>';
+        select.innerHTML = '<option value="">Crie um bolão primeiro</option>';
+        renderPublic();
+        return;
+      }
+      container.innerHTML = state.boloes.map(b => `
+        <article class="card">
+          <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <span class="badge">${b.loteria}</span>
+              <h3>${b.titulo}</h3>
+              <div class="meta">
+                <span>Cota: R$ ${b.valor_cota}</span>
+                <span>Sorteio: ${b.data_sorteio}</span>
+                <span>Pagamento: ${b.data_pagamento}</span>
+              </div>
+              <p class="muted">Pix: ${b.pix}</p>
+              <p class="muted">Slug: ${b.slug}</p>
+            </div>
+            <div class="inline-actions">
+              <button class="secondary-btn" onclick="app.editBolao('${b.id}')">Editar</button>
+              <button class="ghost-btn" onclick="app.openPublic('${b.slug}')">Abrir página</button>
+              <button class="danger-btn" onclick="app.deleteBolao('${b.id}')">Excluir</button>
+            </div>
+          </div>
+          ${b.descricao ? `<p class="muted">${b.descricao}</p>` : ''}
+        </article>
+      `).join('');
+      select.innerHTML = state.boloes.map(b => `<option value="${b.id}">${b.titulo}</option>`).join('');
+      renderPublic();
+    }
+
+    function renderParticipantes() {
+      const tbody = $('#participantesTable');
+      if (!state.participantes.length) {
+        tbody.innerHTML = '<tr><td colspan="5">Nenhum participante cadastrado.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = state.participantes.map(p => {
+        const bolao = state.boloes.find(b => b.id === p.bolao_id);
+        return `
+          <tr>
+            <td>${p.nome}</td>
+            <td>${p.contato || '-'}</td>
+            <td>${formatStatusBadge(p.status)}</td>
+            <td>${bolao?.titulo || '-'}</td>
+            <td>
+              <div class="inline-actions">
+                <button class="ghost-btn" onclick="app.toggleStatus('${p.id}')">Alternar status</button>
+                <button class="danger-btn" onclick="app.deleteParticipante('${p.id}')">Excluir</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderJogos() {
+      const container = $('#jogosList');
+      if (!state.jogos.length) {
+        container.innerHTML = '<div class="empty">Nenhum jogo cadastrado.</div>';
+        return;
+      }
+      container.innerHTML = state.jogos.map(j => {
+        const bolao = state.boloes.find(b => b.id === j.bolao_id);
+        return `
+          <article class="card">
+            <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+              <div>
+                <span class="badge warning">Concurso ${j.concurso}</span>
+                <h3>${j.dezenas}</h3>
+                <div class="meta">
+                  <span>Bolão: ${bolao?.titulo || '-'}</span>
+                  <span>Valor: ${j.valor || '-'}</span>
+                </div>
+                ${j.observacoes ? `<p class="muted">${j.observacoes}</p>` : ''}
+              </div>
+              <div class="inline-actions">
+                <button class="danger-btn" onclick="app.deleteJogo('${j.id}')">Excluir</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderPublic() {
+      const card = $('#publicBolaoCard');
+      const bolao = getSelectedBolao();
+      if (!bolao) {
+        card.innerHTML = '<div class="empty">Crie um bolão para gerar a página pública.</div>';
+        $('#publicLinkText').textContent = 'https://seu-dominio.pages.dev/?bolao=seu-slug';
+        return;
+      }
+      const base = location.origin.includes('file') ? 'https://seu-dominio.pages.dev' : location.origin + location.pathname;
+      $('#publicLinkText').textContent = `${base}?bolao=${bolao.slug}`;
+      const participantes = state.participantes.filter(p => p.bolao_id === bolao.id);
+      const jogos = state.jogos.filter(j => j.bolao_id === bolao.id);
+      card.innerHTML = `
+        <h3 style="margin-top:0;">${bolao.titulo}</h3>
+        <div class="meta">
+          <span>Loteria: ${bolao.loteria}</span>
+          <span>Cota: R$ ${bolao.valor_cota}</span>
+          <span>Sorteio: ${bolao.data_sorteio}</span>
+          <span>Pagamento: ${bolao.data_pagamento}</span>
+        </div>
+        <p><strong>Pix:</strong> ${bolao.pix}</p>
+        ${bolao.descricao ? `<p class="muted">${bolao.descricao}</p>` : ''}
+        <div class="grid-2" style="margin-top:var(--space-4);">
+          <div class="card" style="padding:var(--space-4);"><span class="muted">Participantes</span><h3 style="margin:.4rem 0 0;">${participantes.length}</h3></div>
+          <div class="card" style="padding:var(--space-4);"><span class="muted">Jogos lançados</span><h3 style="margin:.4rem 0 0;">${jogos.length}</h3></div>
+        </div>
+      `;
+    }
+
+    function renderAll() {
+      saveLocal();
+      renderBoloes();
+      renderParticipantes();
+      renderJogos();
+      renderPublic();
+    }
+
+    async function connectSupabase() {
+      const url = $('#supabaseUrl').value.trim();
+      const key = $('#supabaseAnon').value.trim();
+      if (!url || !key) {
+        $('#supabaseStatus').textContent = 'Status: informe SUPABASE_URL e SUPABASE_ANON_KEY para testar.';
+        return;
+      }
+      try {
+        const client = window.supabase.createClient(url, key);
+        const { error } = await client.from('boloes').select('id').limit(1);
+        if (error && !String(error.message).toLowerCase().includes('0 rows')) throw error;
+        state.supabase = client;
+        state.storageMode = 'supabase';
+        $('#supabaseStatus').textContent = 'Status: conexão com Supabase realizada. Ajuste as políticas e passe a salvar online.';
+      } catch (err) {
+        state.storageMode = 'local';
+        $('#supabaseStatus').textContent = 'Status: não foi possível conectar agora. Verifique URL, chave e tabelas.';
+      }
+    }
+
+    function addSampleData() {
+      state.boloes = [{
+        id: uid(), titulo: 'Bolão Mega Maio', loteria: 'Mega-Sena', valor_cota: '20,00', data_sorteio: '2026-05-24', data_pagamento: '2026-05-23', pix: '11999999999', slug: 'demo-mega-maio', descricao: 'Bolão com cotas limitadas, confirmação mediante pagamento do Pix.'
+      }];
+      state.participantes = [
+        { id: uid(), bolao_id: state.boloes[0].id, nome: 'Paulo', contato: '(11) 99999-0001', status: 'pago' },
+        { id: uid(), bolao_id: state.boloes[0].id, nome: 'Carlos', contato: '(11) 99999-0002', status: 'pendente' }
+      ];
+      state.jogos = [
+        { id: uid(), bolao_id: state.boloes[0].id, concurso: '2850', dezenas: '04 15 22 33 41 56', valor: '5,00', observacoes: 'Jogo simples' }
+      ];
+      renderAll();
+    }
+
+    const app = {
+      editBolao(id) {
+        const bolao = state.boloes.find(b => b.id === id);
+        if (bolao) {
+          fillBolaoForm(bolao);
+          switchSection('admin-boloes');
+        }
+      },
+      openPublic(slug) {
+        switchSection('publico');
+        $('#publicLinkText').textContent = (location.origin.includes('file') ? 'https://seu-dominio.pages.dev' : location.origin + location.pathname) + '?bolao=' + slug;
+      },
+      deleteBolao(id) {
+        if (!confirm('Excluir este bolão?')) return;
+        state.boloes = state.boloes.filter(b => b.id !== id);
+        state.participantes = state.participantes.filter(p => p.bolao_id !== id);
+        state.jogos = state.jogos.filter(j => j.bolao_id !== id);
+        renderAll();
+      },
+      toggleStatus(id) {
+        state.participantes = state.participantes.map(p => p.id === id ? { ...p, status: p.status === 'pendente' ? 'pago' : p.status === 'pago' ? 'cancelado' : 'pendente' } : p);
+        renderAll();
+      },
+      deleteParticipante(id) {
+        state.participantes = state.participantes.filter(p => p.id !== id);
+        renderAll();
+      },
+      deleteJogo(id) {
+        state.jogos = state.jogos.filter(j => j.id !== id);
+        renderAll();
+      }
+    };
+    window.app = app;
+
+    $('#bolaoForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const payload = {
+        id: state.editingBolaoId || uid(),
+        titulo: $('#titulo').value.trim(),
+        loteria: $('#loteria').value.trim(),
+        valor_cota: $('#valorCota').value.trim(),
+        slug: $('#slug').value.trim(),
+        data_sorteio: $('#dataSorteio').value,
+        data_pagamento: $('#dataPagamento').value,
+        pix: $('#pix').value.trim(),
+        descricao: $('#descricao').value.trim()
+      };
+      if (state.editingBolaoId) {
+        state.boloes = state.boloes.map(b => b.id === state.editingBolaoId ? payload : b);
+      } else {
+        state.boloes.unshift(payload);
+      }
+      resetBolaoForm();
+      renderAll();
+    });
+
+    $('#participanteForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const bolao = getSelectedBolao();
+      if (!bolao) return alert('Crie um bolão antes de adicionar participantes.');
+      state.participantes.unshift({
+        id: uid(), bolao_id: bolao.id,
+        nome: $('#participanteNome').value.trim(),
+        contato: $('#participanteContato').value.trim(),
+        status: $('#participanteStatus').value
+      });
+      e.target.reset();
+      renderAll();
+    });
+
+    $('#jogoForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const bolaoId = $('#jogoBolao').value;
+      if (!bolaoId) return alert('Escolha um bolão.');
+      state.jogos.unshift({
+        id: uid(), bolao_id: bolaoId,
+        concurso: $('#jogoConcurso').value.trim(),
+        valor: $('#jogoValor').value.trim(),
+        dezenas: $('#jogoDezenas').value.trim(),
+        observacoes: $('#jogoObs').value.trim()
+      });
+      e.target.reset();
+      renderAll();
+    });
+
+    $('#publicJoinForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const bolao = getSelectedBolao();
+      if (!bolao) return alert('Nenhum bolão ativo.');
+      state.participantes.unshift({
+        id: uid(), bolao_id: bolao.id,
+        nome: $('#publicNome').value.trim(),
+        contato: $('#publicContato').value.trim(),
+        status: 'pendente'
+      });
+      e.target.reset();
+      switchSection('admin-participantes');
+      renderAll();
+      alert('Participação registrada como pendente.');
+    });
+
+    $('#copyLinkBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText($('#publicLinkText').textContent.trim());
+        alert('Link copiado.');
+      } catch {
+        alert('Não foi possível copiar automaticamente.');
+      }
+    });
+
+    $('#novoBolaoBtn').addEventListener('click', resetBolaoForm);
+    $('#demoSeedBtn').addEventListener('click', addSampleData);
+    $('#connectSupabaseBtn').addEventListener('click', connectSupabase);
+    $('[data-theme-toggle]').addEventListener('click', toggleTheme);
+    $$('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchSection(btn.dataset.section)));
+    $$('[data-go-section]').forEach(btn => btn.addEventListener('click', () => switchSection(btn.dataset.goSection)));
+
+    loadLocal();
+    updateThemeButton();
+    renderAll();
+  </script>
+</body>
+</html>
